@@ -1,0 +1,22 @@
+{
+  "name": "chan-omega-web-design/simple-calendar-bundle",
+  "description": "A Simple Calendar Bundle",
+  "homepage": "https://github.com/ChanOmegaWebDesign/simple-calendar-bundle",
+  "type": "symfony-bundle",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Arleigh Hix",
+      "email": "Arleigh@COWDD.com",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": ">=7.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "COWDDSimpleCalendar\\": "src/"
+    }
+  }
+}
