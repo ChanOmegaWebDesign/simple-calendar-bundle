@@ -13,6 +13,8 @@ namespace COWDDSimpleCalendar;
 
 
 use COWDDSimpleCalendar\Exception\UnexpectedValueException;
+use COWDDSimpleCalendar\Renderer\HtmlTableRenderer;
+use COWDDSimpleCalendar\Renderer\RendererInterface;
 
 class Calendar
 {
@@ -27,19 +29,26 @@ class Calendar
     'mon'    => self::MONDAY,
   ];
   const DEFAULT_OPTIONS = [
+    'renderer'          => HtmlTableRenderer::class,
     'first_day_of_week' => self::SUNDAY,
     'year'              => null,
     'month'             => null,
+    'year_format'       => 'Y',
     'month_format'      => 'F',
     'day_format'        => 'D',
     'date_format'       => 'j',
   ];
   const SUPPORTED_FORMATS = [
-    'month_format' => ['F', 'm', 'M', 'n'],
-    'day_format'   => ['D', 'l', 'N', 'w'],
-    'date_format'  => ['d', 'j', 'z', 'jS'],
+    'year'  => ['Y', 'y'],
+    'month' => ['F', 'm', 'M', 'n'],
+    'date'  => ['d', 'j', 'z', 'jS'],
+    'day'   => ['D', 'l', 'N', 'w'],
   ];
 
+  /**
+   * @var RendererInterface $renderer
+   */
+  private $renderer;
   private $first_day_of_week;
   private $year;
   private $month;
@@ -66,11 +75,72 @@ class Calendar
       ->setFirstDayOfWeek($options['first_day_of_week'])
       ->setYear($options['year'])
       ->setMonth($options['month'])
-      ->setMonthFormat($options['month_format'])
-      ->setDayFormat($options['day_format'])
-      ->setDateFormat($options['day_format'])
+      ->setRenderer($options['renderer'])
     ;
 
+    foreach (['year', 'month', 'day', 'date'] as $part) {
+      $this->setFormat($part, $options[$part . '_format']);
+    }
+
+  }
+
+  /**
+   * @return \DateTimeImmutable
+   */
+  public function getToday()
+  {
+    return $this->today;
+  }
+
+  /**
+   * @return \COWDDSimpleCalendar\Renderer\RendererInterface
+   */
+  public function getRenderer()
+  {
+    return $this->renderer;
+  }
+
+  /**
+   * @param \COWDDSimpleCalendar\Renderer\RendererInterface $renderer
+   *
+   * @return Calendar
+   */
+  public function setRenderer($renderer)
+  {
+    if ($renderer instanceof RendererInterface) {
+      $this->renderer = $renderer;
+
+      return $this;
+    }
+    if (in_array(RendererInterface::class, class_implements($renderer))) {
+      $this->renderer = new $renderer;
+
+      return $this;
+    }
+    if (is_object($renderer)){
+      $renderer = get_class($renderer);
+    }
+    throw new UnexpectedValueException('$options["renderer"] must be instanceof "'.RendererInterface::class. '" got:"'.$renderer.'"');
+
+  }
+
+  /**
+   * @return string
+   */
+  public function getYearFormat()
+  {
+    return $this->year_format;
+  }
+
+  /**
+   * @param string $year_format
+   *
+   * @return Calendar
+   */
+  public function setYearFormat($year_format)
+  {
+    $this->year_format = $year_format;
+    return $this;
   }
 
   /**
@@ -82,11 +152,11 @@ class Calendar
   }
 
   /**
-   * @param mixed $day
+   * @param string $day
    *
    * @return Calendar
    */
-  public function setFirstDayOfWeek($day)
+  public function setFirstDayOfWeek(string $day): self
   {
     $day = strtolower($day);
     if (!in_array($day, array_keys(self::FIRST_DAY_OF_WEEK))) {
@@ -97,10 +167,7 @@ class Calendar
     return $this;
   }
 
-  /**
-   * @return mixed
-   */
-  public function getYear()
+  public function getYear(): string
   {
     return $this->year;
   }
@@ -110,16 +177,13 @@ class Calendar
    *
    * @return Calendar
    */
-  public function setYear($year)
+  public function setYear($year): self
   {
     $this->year = $year;
     return $this;
   }
 
-  /**
-   * @return mixed
-   */
-  public function getMonth()
+  public function getMonth(): string
   {
     return $this->month;
   }
@@ -129,82 +193,45 @@ class Calendar
    *
    * @return Calendar
    */
-  public function setMonth($month)
+  public function setMonth($month): self
   {
     $this->month = $month;
     return $this;
   }
 
-  /**
-   * @return mixed
-   */
-  public function getMonthFormat()
+
+  public function getFormatParts(): array
   {
-    return $this->month_format;
+    return array_keys(self::SUPPORTED_FORMATS);
   }
 
-  /**
-   * @param string $month_format
-   *
-   * @return $this
-   */
-  public function setMonthFormat(string $month_format)
+  public function getFormat(string $part): string
   {
-    if (!in_array($month_format, self::SUPPORTED_FORMATS['month_format'])) {
-      throw new UnexpectedValueException(UnexpectedValueException::message(self::SUPPORTED_FORMATS['month_format'], $month_format));
+    $part = strtolower($part);
+    if (!in_array($part, $this->getFormatParts())) {
+      throw new UnexpectedValueException(UnexpectedValueException::message($this->getFormatParts(), $part));
     }
-    $this->month_format = $month_format;
+
+    return $this->{$part . '_format'};
+  }
+
+  public function setFormat(string $part, string $format): self
+  {
+    $part = strtolower($part);
+    if (!in_array($part, $this->getFormatParts())) {
+      throw new UnexpectedValueException(UnexpectedValueException::message($this->getFormatParts(), $part));
+    }
+    if (!in_array($format, self::SUPPORTED_FORMATS[$part])) {
+      throw new UnexpectedValueException(UnexpectedValueException::message(self::SUPPORTED_FORMATS[$part], $format));
+    }
+    $this->{$part . '_format'} = $format;
 
     return $this;
   }
 
 
-  /**
-   * @param string $day_format
-   *
-   * @return $this
-   */
-  public function setDayFormat(string $day_format)
+  public function getView(): string
   {
-    if (!in_array($day_format, self::SUPPORTED_FORMATS['day_format'])) {
-      throw new UnexpectedValueException(UnexpectedValueException::message(self::SUPPORTED_FORMATS['day_format'], $day_format));
-    }
-    $this->day_format = $day_format;
-
-    return $this;
+    return $this->renderer->render($this);
   }
-
-
-  /**
-   * @param string $date_format
-   *
-   * @return $this
-   */
-  public function setDateFormat(string $date_format)
-  {
-    if (!in_array($date_format, self::SUPPORTED_FORMATS['date_format'])) {
-      throw new UnexpectedValueException(UnexpectedValueException::message(self::SUPPORTED_FORMATS['date_format'], $date_format));
-    }
-    $this->date_format = $date_format;
-
-    return $this;
-  }
-
-  /**
-   * @return mixed
-   */
-  public function getDayFormat()
-  {
-    return $this->day_format;
-  }
-
-  /**
-   * @return mixed
-   */
-  public function getDateFormat()
-  {
-    return $this->date_format;
-  }
-
-
 }
