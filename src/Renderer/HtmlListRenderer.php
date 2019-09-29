@@ -39,7 +39,7 @@ class HtmlListRenderer implements RendererInterface
 
     while ($date < $end_date) {
       $html .= "
-        <li class='calendar-day' style='counter-increment: customlistcounter;'>
+        <li class='calendar-day'>
           <span class='calendar-date'>{$date->format($date_format)}</span>
           <span class='calender-day'>{$date->format($day_format)}</span>
         </li>
